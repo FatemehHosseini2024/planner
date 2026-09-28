@@ -1,0 +1,5 @@
+# Streamlit app
+.env
+*.pyc
+__pycache__/
+data.json

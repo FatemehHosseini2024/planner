@@ -11,6 +11,16 @@ DEFAULT_COLORS = [
     "#F8B500", "#00CED1", "#FF69B4", "#32CD32", "#FF8C00"
 ]
 
+def load_env():
+    env_path = ".env"
+    if os.path.exists(env_path):
+        with open(env_path, "r") as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith("#") and "=" in line:
+                    key, value = line.split("=", 1)
+                    os.environ[key] = value
+
 def load_data():
     if os.path.exists(DATA_FILE):
         with open(DATA_FILE, "r") as f:
@@ -96,7 +106,30 @@ def recommend_activities(data, total_activities):
     
     return recommendations[:total_activities]
 
+def check_password():
+    load_env()
+    correct_password = os.environ.get("APP_PASSWORD", "")
+    
+    if "authenticated" not in st.session_state:
+        st.session_state.authenticated = False
+    
+    if not st.session_state.authenticated:
+        st.title("🔒 Daily Planner - Login")
+        password = st.text_input("Enter Password", type="password")
+        if st.button("Login"):
+            if password == correct_password:
+                st.session_state.authenticated = True
+                st.rerun()
+            else:
+                st.error("Incorrect password")
+        return False
+    return True
+
 st.set_page_config(page_title="Daily Planner", layout="wide")
+
+if not check_password():
+    st.stop()
+
 st.title("Daily Planner")
 
 data = load_data()
