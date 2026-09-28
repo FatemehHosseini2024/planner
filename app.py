@@ -108,6 +108,11 @@ def recommend_activities(data, total_activities):
 def check_password():
     load_env()
     correct_password = os.environ.get("APP_PASSWORD", "")
+    if not correct_password:
+        try:
+            correct_password = st.secrets.get("APP_PASSWORD", "")
+        except Exception:
+            pass
     
     if "authenticated" not in st.session_state:
         st.session_state.authenticated = False
