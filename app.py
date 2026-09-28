@@ -5,6 +5,12 @@ import random
 
 DATA_FILE = "data.json"
 
+DEFAULT_COLORS = [
+    "#FF6B6B", "#4ECDC4", "#45B7D1", "#96CEB4", "#FFEAA7",
+    "#DDA0DD", "#98D8C8", "#F7DC6F", "#BB8FCE", "#85C1E9",
+    "#F8B500", "#00CED1", "#FF69B4", "#32CD32", "#FF8C00"
+]
+
 def load_data():
     if os.path.exists(DATA_FILE):
         with open(DATA_FILE, "r") as f:
@@ -17,6 +23,13 @@ def save_data(data):
 
 def get_total_percent(data):
     return sum(v.get("percent", 0) for v in data.get("categories", {}).values())
+
+def get_next_color(data):
+    used = {v.get("color", "") for v in data.get("categories", {}).values()}
+    for color in DEFAULT_COLORS:
+        if color not in used:
+            return color
+    return f"#{random.randint(0, 0xFFFFFF):06x}"
 
 def recommend_activities(data, total_activities):
     categories = data.get("categories", {})
@@ -76,15 +89,26 @@ with st.sidebar:
     
     if st.button("Add Category"):
         new_name = f"Category {len(data['categories']) + 1}"
-        data["categories"][new_name] = {"percent": 0, "activities": []}
+        data["categories"][new_name] = {
+            "percent": 0, 
+            "activities": [], 
+            "color": get_next_color(data)
+        }
         save_data(data)
         st.rerun()
     
     for cat_name, cat_data in list(data["categories"].items()):
-        with st.expander(cat_name, expanded=True):
+        color = cat_data.get("color", "#808080")
+        with st.expander(f"{cat_name}", expanded=True):
             new_name = st.text_input("Name", value=cat_name, key=f"name_{cat_name}")
             if new_name != cat_name and new_name not in data["categories"]:
                 data["categories"][new_name] = data["categories"].pop(cat_name)
+                save_data(data)
+                st.rerun()
+            
+            new_color = st.color_picker("Color", value=color, key=f"color_{cat_name}")
+            if new_color != color:
+                data["categories"][cat_name]["color"] = new_color
                 save_data(data)
                 st.rerun()
             
@@ -138,6 +162,13 @@ if st.button("Recommend Activities", type="primary", disabled=total_percent != 1
     if recommendations:
         st.success(f"Recommended {len(recommendations)} activities:")
         for cat, act in recommendations:
-            st.write(f"**{cat}**: {act}")
+            color = data["categories"][cat].get("color", "#808080")
+            st.markdown(
+                f"<div style='background-color: {color}22; border-left: 4px solid {color}; "
+                f"padding: 8px 12px; margin: 4px 0; border-radius: 4px;'>"
+                f"<strong style='color: {color};'>{cat}</strong>: {act}"
+                f"</div>",
+                unsafe_allow_html=True
+            )
     else:
         st.warning("No categories with percent > 0 or no activities available.")
