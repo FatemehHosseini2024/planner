@@ -19,7 +19,7 @@ def load_env():
                 line = line.strip()
                 if line and not line.startswith("#") and "=" in line:
                     key, value = line.split("=", 1)
-                    os.environ[key] = value
+                    os.environ[key] = value.strip()
 
 def load_data():
     if os.path.exists(DATA_FILE):
