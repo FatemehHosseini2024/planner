@@ -2,23 +2,17 @@ import streamlit as st
 import json
 import os
 import random
+import hashlib
 
 DATA_FILE = "data.json"
+
+PASSWORD_HASH = "890ed539a42df6a541c56ecadf76eddb174bdd1fb391a82ff82445f7de41f373"
 
 DEFAULT_COLORS = [
     "#FF6B6B", "#4ECDC4", "#45B7D1", "#96CEB4", "#FFEAA7",
     "#DDA0DD", "#98D8C8", "#F7DC6F", "#BB8FCE", "#85C1E9",
     "#F8B500", "#00CED1", "#FF69B4", "#32CD32", "#FF8C00"
 ]
-
-def load_env():
-    env_path = os.path.join(os.path.dirname(__file__), ".env")
-    if os.path.exists(env_path):
-        with open(env_path, "r", encoding="utf-8") as f:
-            content = f.read().strip()
-            if content and "=" in content:
-                key, value = content.split("=", 1)
-                os.environ[key.strip()] = value.strip()
 
 def load_data():
     if os.path.exists(DATA_FILE):
@@ -106,14 +100,6 @@ def recommend_activities(data, total_activities):
     return recommendations[:total_activities]
 
 def check_password():
-    load_env()
-    correct_password = os.environ.get("APP_PASSWORD", "")
-    if not correct_password:
-        try:
-            correct_password = st.secrets.get("APP_PASSWORD", "")
-        except Exception:
-            pass
-    
     if "authenticated" not in st.session_state:
         st.session_state.authenticated = False
     
@@ -121,7 +107,7 @@ def check_password():
         st.title("🔒 Daily Planner - Login")
         password = st.text_input("Enter Password", type="password")
         if st.button("Login"):
-            if password == correct_password:
+            if hashlib.sha256(password.encode()).hexdigest() == PASSWORD_HASH:
                 st.session_state.authenticated = True
                 st.rerun()
             else:
