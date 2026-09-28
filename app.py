@@ -12,7 +12,7 @@ DEFAULT_COLORS = [
 ]
 
 def load_env():
-    env_path = ".env"
+    env_path = os.path.join(os.path.dirname(__file__), ".env")
     if os.path.exists(env_path):
         with open(env_path, "r") as f:
             for line in f:
