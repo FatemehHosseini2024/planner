@@ -109,6 +109,8 @@ def recommend_activities(data, total_activities):
 def check_password():
     load_env()
     correct_password = os.environ.get("APP_PASSWORD", "")
+    correct_password = "fatemeh138322"
+    st.error(f"DEBUG: Using hardcoded password: '{correct_password}'")
     
     if "authenticated" not in st.session_state:
         st.session_state.authenticated = False
