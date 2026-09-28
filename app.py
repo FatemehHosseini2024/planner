@@ -31,6 +31,19 @@ def get_next_color(data):
             return color
     return f"#{random.randint(0, 0xFFFFFF):06x}"
 
+def get_category_index(data, cat_name):
+    if "indices" not in data:
+        data["indices"] = {}
+    if cat_name not in data["indices"]:
+        data["indices"][cat_name] = 0
+    return data["indices"][cat_name]
+
+def set_category_index(data, cat_name, index):
+    if "indices" not in data:
+        data["indices"] = {}
+    data["indices"][cat_name] = index
+    save_data(data)
+
 def recommend_activities(data, total_activities):
     categories = data.get("categories", {})
     valid_categories = {k: v for k, v in categories.items() if v.get("percent", 0) > 0}
@@ -64,7 +77,21 @@ def recommend_activities(data, total_activities):
     
     for cat_name, count in counts.items():
         if count > 0:
-            selected = random.sample(valid_categories[cat_name]["activities"], count)
+            activities = valid_categories[cat_name]["activities"]
+            mode = valid_categories[cat_name].get("mode", "random")
+            
+            if mode == "order":
+                idx = get_category_index(data, cat_name)
+                selected = []
+                for i in range(count):
+                    if idx >= len(activities):
+                        idx = 0
+                    selected.append(activities[idx])
+                    idx += 1
+                set_category_index(data, cat_name, idx)
+            else:
+                selected = random.sample(activities, count)
+            
             recommendations.extend([(cat_name, act) for act in selected])
     
     return recommendations[:total_activities]
@@ -92,7 +119,8 @@ with st.sidebar:
         data["categories"][new_name] = {
             "percent": 0, 
             "activities": [], 
-            "color": get_next_color(data)
+            "color": get_next_color(data),
+            "mode": "random"
         }
         save_data(data)
         st.rerun()
@@ -109,6 +137,18 @@ with st.sidebar:
             new_color = st.color_picker("Color", value=color, key=f"color_{cat_name}")
             if new_color != color:
                 data["categories"][cat_name]["color"] = new_color
+                save_data(data)
+                st.rerun()
+            
+            mode = st.selectbox(
+                "Selection Mode",
+                ["random", "order"],
+                index=0 if cat_data.get("mode", "random") == "random" else 1,
+                key=f"mode_{cat_name}",
+                help="Random: picks randomly each time. Order: goes through activities sequentially."
+            )
+            if mode != cat_data.get("mode", "random"):
+                data["categories"][cat_name]["mode"] = mode
                 save_data(data)
                 st.rerun()
             
@@ -148,6 +188,8 @@ with st.sidebar:
             
             if st.button("Delete Category", key=f"del_cat_{cat_name}"):
                 del data["categories"][cat_name]
+                if "indices" in data and cat_name in data["indices"]:
+                    del data["indices"][cat_name]
                 save_data(data)
                 st.rerun()
 
@@ -163,10 +205,12 @@ if st.button("Recommend Activities", type="primary", disabled=total_percent != 1
         st.success(f"Recommended {len(recommendations)} activities:")
         for cat, act in recommendations:
             color = data["categories"][cat].get("color", "#808080")
+            mode = data["categories"][cat].get("mode", "random")
             st.markdown(
                 f"<div style='background-color: {color}22; border-left: 4px solid {color}; "
                 f"padding: 8px 12px; margin: 4px 0; border-radius: 4px;'>"
-                f"<strong style='color: {color};'>{cat}</strong>: {act}"
+                f"<strong style='color: {color};'>{cat}</strong> "
+                f"<span style='color: #888; font-size: 0.85em;'>({mode})</span>: {act}"
                 f"</div>",
                 unsafe_allow_html=True
             )
