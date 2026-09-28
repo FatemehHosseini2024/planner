@@ -14,12 +14,11 @@ DEFAULT_COLORS = [
 def load_env():
     env_path = os.path.join(os.path.dirname(__file__), ".env")
     if os.path.exists(env_path):
-        with open(env_path, "r") as f:
-            for line in f:
-                line = line.strip()
-                if line and not line.startswith("#") and "=" in line:
-                    key, value = line.split("=", 1)
-                    os.environ[key] = value.strip()
+        with open(env_path, "r", encoding="utf-8") as f:
+            content = f.read().strip()
+            if content and "=" in content:
+                key, value = content.split("=", 1)
+                os.environ[key.strip()] = value.strip()
 
 def load_data():
     if os.path.exists(DATA_FILE):
@@ -109,8 +108,9 @@ def recommend_activities(data, total_activities):
 def check_password():
     load_env()
     correct_password = os.environ.get("APP_PASSWORD", "")
-    correct_password = "fatemeh138322"
-    st.error(f"DEBUG: Using hardcoded password: '{correct_password}'")
+    # Fallback to hardcoded if env not loaded
+    if not correct_password:
+        correct_password = "fatemeh138322"
     
     if "authenticated" not in st.session_state:
         st.session_state.authenticated = False
