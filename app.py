@@ -3,8 +3,11 @@ import json
 import os
 import random
 import hashlib
+import hmac
+import base64
 
-DATA_FILE = "data.json"
+DATA_FILE = "data.enc"
+KEY_FILE = "data.key"
 
 PASSWORD_HASH = "890ed539a42df6a541c56ecadf76eddb174bdd1fb391a82ff82445f7de41f373"
 
@@ -14,15 +17,47 @@ DEFAULT_COLORS = [
     "#F8B500", "#00CED1", "#FF69B4", "#32CD32", "#FF8C00"
 ]
 
+def get_key():
+    if not os.path.exists(KEY_FILE):
+        with open(KEY_FILE, "w") as f:
+            f.write(base64.b64encode(os.urandom(32)).decode())
+    with open(KEY_FILE, "r") as f:
+        return base64.b64decode(f.read().strip())
+
+def _keystream(key, nonce, length):
+    out = b""
+    counter = 0
+    while len(out) < length:
+        out += hashlib.sha256(key + nonce + counter.to_bytes(8, "big")).digest()
+        counter += 1
+    return out[:length]
+
+def encrypt_bytes(key, plaintext):
+    nonce = os.urandom(16)
+    ciphertext = bytes(a ^ b for a, b in zip(plaintext, _keystream(key, nonce, len(plaintext))))
+    mac = hmac.new(key, nonce + ciphertext, hashlib.sha256).digest()[:16]
+    return base64.b64encode(nonce + mac + ciphertext).decode()
+
+def decrypt_bytes(key, blob):
+    raw = base64.b64decode(blob)
+    nonce, mac, ciphertext = raw[:16], raw[16:32], raw[32:]
+    expected = hmac.new(key, nonce + ciphertext, hashlib.sha256).digest()[:16]
+    if not hmac.compare_digest(mac, expected):
+        raise ValueError("Data file is corrupted or the key does not match")
+    return bytes(a ^ b for a, b in zip(ciphertext, _keystream(key, nonce, len(ciphertext))))
+
 def load_data():
     if os.path.exists(DATA_FILE):
-        with open(DATA_FILE, "r") as f:
-            return json.load(f)
+        try:
+            with open(DATA_FILE, "r") as f:
+                return json.loads(decrypt_bytes(get_key(), f.read().strip()).decode())
+        except (ValueError, json.JSONDecodeError):
+            return {"categories": {}}
     return {"categories": {}}
 
 def save_data(data):
     with open(DATA_FILE, "w") as f:
-        json.dump(data, f, indent=2)
+        f.write(encrypt_bytes(get_key(), json.dumps(data).encode()))
 
 def get_total_percent(data):
     return sum(v.get("percent", 0) for v in data.get("categories", {}).values())

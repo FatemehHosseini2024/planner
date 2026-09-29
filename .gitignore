@@ -3,4 +3,8 @@
 .streamlit/
 *.pyc
 __pycache__/
+
+# User data and encryption key (never commit these)
 data.json
+data.enc
+data.key
